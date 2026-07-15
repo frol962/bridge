@@ -139,7 +139,8 @@ def expire_stale(days: int = 14) -> None:
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     r = requests.patch(
-        f"{SUPABASE_URL}/rest/v1/{TABLE}?last_seen_at=lt.{cutoff}&is_live=is.true",
+        f"{SUPABASE_URL}/rest/v1/{TABLE}",
+        params={"last_seen_at": f"lt.{cutoff}", "is_live": "is.true"},
         headers={**_headers(), "Prefer": "return=minimal"},
         json={"is_live": False},
         timeout=60,
