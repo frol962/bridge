@@ -138,6 +138,9 @@ def expire_stale(days: int = 14) -> None:
     back we just start seeing it again and is_live flips back on its own.
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    # Pass filters via params= rather than f-stringing them into the URL. The
+    # timestamp ends in "+00:00", and a raw "+" in a query string decodes to a
+    # space - PostgREST then rejects the malformed date with a 400.
     r = requests.patch(
         f"{SUPABASE_URL}/rest/v1/{TABLE}",
         params={"last_seen_at": f"lt.{cutoff}", "is_live": "is.true"},
