@@ -48,6 +48,29 @@ DATE_LINE_RE = re.compile(r"\bDates?:\s*(?P<value>[^\n\r]{4,120})", re.I)
 
 SOCIAL = ("linkedin.com", "instagram.com", "facebook.com", "twitter.com", "x.com")
 
+# When the bit before the colon is one of these, it is a location, not an employer.
+CITY_PREFIXES = {
+    "london", "glasgow", "bristol", "edinburgh", "manchester", "birmingham",
+    "leeds", "bournemouth", "cardiff", "newcastle", "liverpool", "leith",
+    "sheffield", "nottingham", "reading", "chester", "halifax", "swansea",
+    "belfast", "national", "online", "virtual", "uk wide", "north west",
+    "south east", "midlands", "yorkshire", "scotland", "wales",
+}
+
+# The URL slug is reliable but ugly ("jp-morgan"). Map the ones we know; anything
+# else falls back to a title-cased slug, which is wrong-ish but never a city.
+COMPANY_NAMES = {
+    "jp-morgan": "JPMorganChase",
+    "lloyds-bank": "Lloyds Banking Group",
+    "taylor-wessing": "Winston Taylor International LLP",
+    "kpmg": "KPMG",
+    "deloitte": "Deloitte",
+    "ibm": "IBM",
+    "crisil-coalition-greenwich": "Crisil Coalition Greenwich",
+    "just-eat": "Just Eat Takeaway.com",
+    "peppo-tutors": "Peppo",
+}
+
 HEADERS = {
     # Identify the bot honestly and give them a way to reach you. Costs nothing
     # and is the difference between "unknown scraper" and "we'll email first".
@@ -246,12 +269,29 @@ def parse_detail(html: str, url: str, kind: str) -> RawListing | None:
         elif pm:
             title = pm.group("title").strip()
 
-    # Titles are consistently "Employer: Thing, Location"
+    # Uptree titles are NOT consistent. Both of these are real:
+    #   "Winston Taylor: Tomorrow Talent Work Experience Programme (Paid)"
+    #   "Glasgow: JPMorganChase Work Experience Programme 2026"
+    # Splitting on the first colon and calling the left side the employer puts a
+    # city in the organisation field roughly half the time. The company slug in
+    # the URL is the only reliable source, so prefer that and treat a city prefix
+    # as what it is - a location.
     organisation = None
-    if ":" in title:
-        organisation, _, remainder = title.partition(":")
-        organisation = organisation.strip()
-        title = remainder.strip() or title
+    location = None
+    prefix, sep, remainder = title.partition(":")
+    if sep:
+        prefix = prefix.strip()
+        if prefix.lower() in CITY_PREFIXES:
+            location = prefix
+            title = remainder.strip() or title
+        else:
+            organisation = prefix
+            title = remainder.strip() or title
+
+    if not organisation:
+        organisation = COMPANY_NAMES.get(
+            company_slug, company_slug.replace("-", " ").title()
+        )
 
     apply_url = _extract_apply_url(soup)
     start_date, end_date = _parse_dates(og_title, text)
@@ -264,7 +304,7 @@ def parse_detail(html: str, url: str, kind: str) -> RawListing | None:
         title=title or None,
         organisation=organisation or company_slug.replace("-", " ").title(),
         description=_meta(soup, "og:description"),
-        location=None,  # normalised downstream from title/body
+        location=location,
         start_date=start_date,
         end_date=end_date,
         apply_url=apply_url or url,
