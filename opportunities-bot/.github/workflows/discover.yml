@@ -1,0 +1,30 @@
+name: discover
+
+on:
+  schedule:
+    # Every 6 hours, offset from scrape/enrich so they don't collide.
+    - cron: "51 1,7,13,19 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: discover
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+        working-directory: opportunities-bot
+      - run: python -m pipeline.discover_run
+        working-directory: opportunities-bot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
