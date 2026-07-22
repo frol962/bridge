@@ -20,6 +20,7 @@ must not invent facts:
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -67,6 +68,14 @@ Hard rules:
 - age 14-16 -> ["Year 10","Year 11"]; 16-18 -> ["Year 12","Year 13"]; if the page names year groups directly, use those.
 - If the page is an error, a login wall, a generic careers homepage, or clearly not this specific opportunity, set confidence below 0.4 and null everything you can't verify.
 - description must be about THIS opportunity, in your own words, under 60 words.
+- description must be PROSE - complete sentences describing what the student does.
+  NEVER copy label fragments from the page. These are all INVALID descriptions:
+    "Location: Virtual event hosted on Zoom."
+    "Location: Cambridge, Edinburgh"
+    "Start Date: September 2026"
+  If the page gives you no real prose about the activity, set description to null
+  and set confidence below 0.5. A null description is far better than a fragment.
+- Never include HTML entities (&nbsp; &amp; &#39;) or raw markup in any field.
 
 PAGE TITLE: {title}
 ORGANISATION: {organisation}
@@ -84,7 +93,13 @@ def _fetch_text(url: str) -> str | None:
         soup = BeautifulSoup(r.text, "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "svg", "header"]):
             tag.decompose()
-        text = re.sub(r"\n{3,}", "\n\n", soup.get_text("\n", strip=True))
+        text = soup.get_text("\n", strip=True)
+        # Decode &nbsp; &amp; etc BEFORE the model sees them, or they end up
+        # copied verbatim into descriptions.
+        text = html.unescape(text)
+        text = text.replace("\xa0", " ")
+        text = re.sub(r"[ \t]{2,}", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
         return text[:PAGE_CHAR_LIMIT] or None
     except requests.RequestException as e:
         log.warning("extract: fetch failed %s: %s", url, e)
