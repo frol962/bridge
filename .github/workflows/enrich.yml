@@ -1,0 +1,30 @@
+name: enrich
+
+on:
+  schedule:
+    # 40 min after the scraper, so it enriches freshly-scraped rows.
+    - cron: "17 3,9,15,21 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: enrich
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+        working-directory: opportunities-bot
+      - run: python -m pipeline.enrich_ai
+        working-directory: opportunities-bot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
