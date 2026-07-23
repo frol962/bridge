@@ -114,6 +114,13 @@ SOURCES = [
     {"url": "https://www.lse.ac.uk/study-at-lse/summer-schools", "category": "summer_school"},
     {"url": "https://www.imperial.ac.uk/be-inspired/schools-outreach/secondary-schools/summer-schools/",
      "category": "summer_school"},
+
+    # -- Employers who host applications on THEIR OWN site (genuinely no
+    #    third-party signup needed - the whole point the user asked for). --
+    {"url": "https://barclayslifeskills.com/i-want-virtual-work-experience/school/online-work-experience/",
+     "category": "online_course"},
+    {"url": "https://barclayslifeskills.com/help-others/lessons/finding-work-experience/",
+     "category": "online_course"},
 ]
 
 DISCOVERY_PROMPT = """You are looking at a web page to find ONE real, current, applyable opportunity for UK/European students in school Years 11-13 (ages ~15-18), for a site called Bridge that lists internships, work experience, summer schools, volunteering, competitions, insight days and online courses in these subjects: business, economics, finance, politics, philosophy, psychology, law, media.
