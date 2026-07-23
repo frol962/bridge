@@ -62,7 +62,7 @@ SOURCES = [
     # -- Competitions --
     {"url": "https://blueoceancompetition.org/", "category": "competition"},
     {"url": "https://www.johnlockeinstitute.com/essay-competition", "category": "competition"},
-    {"url": "https://www.discovereconomics.co.uk/young-economist-of-the-year", "category": "competition"},
+    {"url": "https://www.discovereconomics.co.uk/young-economist-of-the-year-2026", "category": "competition"},
     {"url": "https://www.bpho.org.uk/", "category": "competition"},
 
     # -- Summer schools (UK/Europe/top US) --
@@ -188,6 +188,22 @@ def _parse_json(raw: str) -> dict | None:
         return None
 
 
+def _derive_status(deadline: str | None) -> str:
+    """
+    A competition/summer school whose deadline has passed is closed - however
+    good the page looked to the model. This was previously hardcoded to
+    "open" regardless of date, which is a real bug: it let a competition that
+    closed weeks ago show as currently open.
+    """
+    if not deadline:
+        return "open"
+    try:
+        d = date.fromisoformat(deadline)
+    except (ValueError, TypeError):
+        return "open"
+    return "closed" if d < date.today() else "open"
+
+
 def _make_id(url: str) -> str:
     """Stable id from the URL, so re-running never creates a duplicate row."""
     digest = hashlib.sha1(url.encode()).hexdigest()[:10]
@@ -254,6 +270,6 @@ def discover_one(source: dict) -> dict | None:
     row["is_live"] = verdict["decision"] == "show" and not low_confidence
     row["review_status"] = "pending" if (verdict["decision"] == "review" or low_confidence) else None
     row["review_reason"] = verdict["reason"] if row["review_status"] else None
-    row["status"] = "open"
+    row["status"] = _derive_status(row.get("deadline"))
 
     return row
